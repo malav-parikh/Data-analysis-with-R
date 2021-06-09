@@ -1,0 +1,166 @@
+---
+title: "Assignment 2"
+author: "Malav Parikh"
+date: "06/05/2021"
+output: html_document
+---
+
+# Question 1
+# reading the data
+```{r}
+# reading data from csv
+abc_news = read.csv("ABC_NEWS.csv")
+
+# number of rows
+print('Number of rows:')
+print(nrow(abc_news))
+
+# number of columns
+print('Number of columns:')
+print(ncol(abc_news))
+```
+# Question 2 A
+```{r}
+# loading libraries
+# install.packages('lubridate')
+library(lubridate)
+library(dplyr)
+library(ggplot2)
+
+# adding a new column named year by getting year from the publish date
+abc_news$year <- year(ymd(abc_news$publish_date))
+# grouping the data based on the new column year
+data_q2a = abc_news %>% group_by(abc_news$year) %>% summarise(total_headlines = n())
+
+# plotting line chart for the number of headlines across years
+ggplot(data_q2a, aes(`abc_news$year`, total_headlines)) + 
+  geom_line(color="#69b3a2", size=1)+
+  xlab("Year") +
+  ylab("Number of headlines") +
+  ggtitle("Number of headlines every year") +
+  theme(axis.text.x = element_text(angle = 300)) 
+```
+# Question 2 B
+```{r}
+# getting maximum headline year by filtering data fom q2a
+maximum_data = filter(data_q2a,total_headlines == max(total_headlines))
+MaximumHeadlineYear = maximum_data$`abc_news$year`
+
+# filtering original data based on the maximum headline year
+MaximumHeadlineYear_data = filter(abc_news, year == MaximumHeadlineYear) 
+MaximumHeadlineYear_data$month <- month(ymd(MaximumHeadlineYear_data$publish_date))
+
+# grouping data by month
+monthwise_data = MaximumHeadlineYear_data %>% group_by(month) %>% summarise(total_headlines = n())
+
+# plotting line chart for 2013
+ggplot(monthwise_data, aes(month, total_headlines)) + 
+  geom_line(color="steelblue", size=1) + 
+  xlab("Month") +
+  ylab("Number of headlines") +
+  ggtitle("Number of headlines every Month for MaximumHeadlineYear") +
+  scale_x_discrete(limits= c(1,2,3,4,5,6,7,8,9,10,11,12))
+```
+# Question 3 A
+```{r}
+# preparing data of emojis by year
+data_of_emojis = abc_news %>% group_by(year) %>% summarise(total_emojis = sum(likes_count,love_count,thankful_count,angry_count,sad_count))
+
+# plotting line chart for data of emojis
+ggplot(data_of_emojis,aes(x=year,y=total_emojis)) +
+  geom_line(color="darkred") +
+  scale_y_continuous(labels = scales::comma) +
+  xlab("Year") +
+  ylab("Total number of emojis") +
+  ggtitle("Total number of emojis for each year")
+```
+# Question 4 
+```{r}
+# adding a new column - the comment emotion column
+abc_news$comment_emotion = ifelse((abc_news$likes_count + abc_news$love_count + abc_news$thankful_count) >= (abc_news$angry_count + abc_news$sad_count), 'positive', 'negative') 
+```
+
+# Question 4 A
+```{r}
+# storing grouped data by year and emotion in new variable
+data_of_comment = abc_news %>% group_by(year,comment_emotion) %>% summarise(total_headlines = n())
+
+# creating a stacked bar chart for emotion data
+ggplot(data_of_comment, aes(fill=comment_emotion, y=total_headlines, x=year)) + 
+    geom_bar(position="stack", stat="identity") +
+  ggtitle("Comment emotion over the years") +
+  xlab("Year") +
+  ylab("Number of headlines")
+```
+```{r}
+# creating a grouped bar chart for emotion data
+ggplot(data_of_comment, aes(fill=comment_emotion, y=total_headlines, x=year)) + 
+    geom_bar(position="dodge", stat="identity") +
+  ggtitle("Comment emotion over the years") +
+  xlab("Year") +
+  ylab("Number of headlines")
+```
+
+# Question 5 A
+```{r}
+# loading the library
+# install.packages('stringr')
+library(stringr)
+
+# making function to get the word count
+word_count_function <- function(abc_news,list_of_words)
+{
+  count_of_words <- str_count(abc_news$headline_text, list_of_words)
+  return(data.frame(abc_news,count_of_words))
+}
+
+# crime topic word count
+abc_news = word_count_function(abc_news,c('police', 'crime', 'jail', 'court', 'charged', 'sentenced', 'murder', 'robbery', 
+'assault', 'trial', 'jury', 'arrested'))
+# renaming the column 
+abc_news = rename(abc_news, Crime = count_of_words)
+
+# Natural disaster topic word count
+abc_news = word_count_function(abc_news,c('floods', 'flooding', 'bushfire', 'bushfires', 'earthquake', 'tsunami', 
+'tornado', 'hurricane', 'typhoon', 'volcano', 'disaster'))
+# renaming the column
+abc_news = rename(abc_news, Natural_disaster = count_of_words)
+
+# Health topic word count
+abc_news = word_count_function(abc_news,c('vaccine', 'medicine', 'doctor', 'doctors', 'nurse', 'nurses', 'hospital', 
+'hospitals', 'disease', 'cure', 'treatment', 'aged care'))
+# renaming the column
+abc_news = rename(abc_news, Health = count_of_words)
+
+# Sports topic word count
+abc_news = word_count_function(abc_news,c('cricket', 'football', 'soccer', 'basketball', 'player', 'golf', 'olympics', 'match'))
+# renaming the column
+abc_news = rename(abc_news, Sports = count_of_words)
+
+# war and terrorism topic word count
+abc_news = word_count_function(abc_news,c('war', 'troops', 'army', 'navy', 'air force', 'battle', 'terror', 'bombing', 'attack', 
+'attacks'))
+# renaming the column
+abc_news = rename(abc_news, WarandTerrorism = count_of_words)
+
+#groping data by year to get sum of all topic numbers
+observations = abc_news %>% group_by(year) %>% 
+summarise(total_crime = sum(Crime),total_natural_disaster = sum(Natural_disaster), total_health = sum(Health), total_sports = sum(Sports), total_WT = sum(WarandTerrorism))
+
+# reshaping data to make it ready for plotting
+new_data_reshaped <- data.frame(x = observations$year,
+                       y = c(observations$total_crime, observations$total_natural_disaster, observations$total_health, observations$total_sports, observations$total_WT),
+                       group = c(rep("Crime", nrow(observations)),
+                                 rep("Natural_Disaster", nrow(observations)),
+                                 rep("Health", nrow(observations)),
+                                 rep("Sports", nrow(observations)),
+                                 rep("WarAndTerrorism", nrow(observations))
+                                 ))
+
+# plotting a line chart
+ggplot(new_data_reshaped, aes(x, y, col = group)) +    
+  geom_line() + 
+  xlab("Year") +
+  ylab("Number of occurences") +
+  ggtitle("Number of occurences for each topic across years")
+```
